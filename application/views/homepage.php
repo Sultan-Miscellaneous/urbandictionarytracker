@@ -15,6 +15,9 @@
 			?>
 			<input type="submit" value="Submit" name="submit"><br>
 			<a href="http://localhost:8080/Site_1/index.php/User_Authentication/logout">LogOut</a>
+			<?php
+				echo $definitions;
+			?>
 		</div>
 	</form>
 </body>

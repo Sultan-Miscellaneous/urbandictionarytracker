@@ -20,6 +20,8 @@ class Homepage_controller extends CI_Controller {
 		// Load Definitions model
 		$this->load->model('Definition');
 
+		$this->load->helper('url');
+
 	}
 	public function loadViewWithMessage($view,$message){
 		$data = array('message' => $message);
@@ -30,6 +32,7 @@ class Homepage_controller extends CI_Controller {
 	public function index() {
 		if ($this->session->userdata('user_name') !== NULL) {
 			$data = $this->session->userdata();
+			$data['definitions'] = $this->Definition->getDefinitionsForUserWithId($this->session->userdata('id'));
 			$this->load->view('homepage',$data);
 		}else{
 			$this->loadViewWithMessage('login_form','Please login<br>');
@@ -52,7 +55,7 @@ class Homepage_controller extends CI_Controller {
 		$checkLinkResult = $this->checkAndPrepLink($str);
 	    if ($checkLinkResult === False)
 	    {
-	        $this->form_validation->set_message('checkUrl', "The url {$originalString} is not a valid urbandictionary url!");
+	        $this->form_validation->set_message('checkUrl', "The word {$originalString} is not a valid urbandictionary url, nor word");
 	        return FALSE;
 	    }
 	    else
@@ -96,7 +99,7 @@ class Homepage_controller extends CI_Controller {
 	public function checkAndPrepLink(&$link){ //pass link by reference to modify it
 		//if user input is url but needs to be prepped
 		$regExResult = preg_match("~^((http:\/\/www.)|(www.)|(http:\/\/))?urbandictionary.com\/define\.php\?term=[\w+]+((&page=)\d)?$~", $link,$matches);
-		if ($regExResult === 1) { //check if URL given has http at all
+		if ($regExResult === 1) { //check if URL given has http 
 			if (array_search('http://www.', $matches)===False && array_search('http://', $matches)===False) {
 				$link = 'http://'.$link;
 			}
@@ -127,6 +130,12 @@ class Homepage_controller extends CI_Controller {
 		@$DOM->loadHTML($html);
 		$DOM->preserveWhiteSpace = false;
    		$content = $DOM->getElementById('content'); //go to content node
+		$urbandictionary_id = "";
+		$word = "";
+		$meaning = "";
+		$example = "";
+		$upvotes = "";
+		$downvotes = "";
    		// echo $content->C14N();
    		foreach ($content->childNodes as $definition){ //get children (basically the definitions)
    			if (isset($definition->attributes)) { //weird rogue children that have no definitions
@@ -134,35 +143,28 @@ class Homepage_controller extends CI_Controller {
 	   			if ($class === 'def-panel') {
 	   				foreach ($definition->childNodes as $property){ //loop through children(properties) of definitions
 						if (isset($property->attributes)) {
-							$id = "";
-							$word = "";
-							$meaning = "";
-							$example = "";
-							$upvotes = "";
-							$downvotes = "";
 							//check class attribute of property
 							$class = $property->attributes->getNamedItem('class')->value;
 							switch ($class) { //check class to aquire data 
 								case 'def-header': 
 									//def header has word, use regex to get word out of <a> tag
 									$rawHtml = $property->C14N(); 
-									if (preg_match('~<a class="word" href=\"/define\.php\?term=[\w.\/\\?]+" name="(\w+)">([\w.\/\\?]+)<\/a>~', $rawHtml, $matches) !== 1) {
-										break;
-									}
-									$id = $matches[1];
-									$word = $matches[2];
-									echo "word: ".$matches[2].'<br>';  							  				
+									echo $rawHtml;
+									preg_match('~<a class="word" href="\/define\.php\?term=([\w .+%]+)&?"? ?\w+;?=?\w+="?(\d+)"~', $rawHtml, $matches);
+									$urbandictionary_id = $matches[2];
+									$word = rawurldecode(urldecode($matches[1]));
+									// echo "word: ".$matches[2].'<br>';  							  				
 									break;
 
 								case 'meaning':
 									$meaning = $property->nodeValue;
-									echo "meaning: ".$property->nodeValue."<br>";
+									// echo "meaning: ".$property->nodeValue."<br>";
 
 								break;
 
 								case 'example':
 									$example = $property->nodeValue;
-									echo "example: ".$property->nodeValue."<br>";
+									// echo "example: ".$property->nodeValue."<br>";
 
 								break;
 
@@ -173,7 +175,7 @@ class Homepage_controller extends CI_Controller {
 									}
 									$upvotes = $matches[1][0];
 									$downvotes = $matches[1][1];
-									echo "upvotes: ".$matches[1][0]." downvotes: ".$matches[1][1]."<br>";
+									// echo "upvotes: ".$matches[1][0]." downvotes: ".$matches[1][1]."<br>";
 								break;
 
 								default:
@@ -181,9 +183,15 @@ class Homepage_controller extends CI_Controller {
 							}
 						}
 					}
+					$aquiredDefinition = new $this->Definition;
+					$aquiredDefinition->setDefinitionProperties($this->session->userdata('id'),$urbandictionary_id,$word, $meaning, $example, $upvotes, $downvotes);
+					if($aquiredDefinition->checkIfDefinitionExists() === False){
+						$aquiredDefinition->saveCurrentDefinitionToDatabase();
+					}
 				}
    			}
 		}
+		redirect('/Homepage_controller/index', 'refresh');
 	}
 	// Show registration page
 

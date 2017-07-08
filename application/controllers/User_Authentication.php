@@ -22,6 +22,9 @@ class User_Authentication extends CI_Controller {
 
 		//load email
 		$this->load->model('email_validation');
+
+		$this->load->helper('url');
+
 	}
 	public function loadViewWithMessage($view,$message){
 		$data = array('message' => $message);
@@ -94,8 +97,7 @@ class User_Authentication extends CI_Controller {
 	// Show login page
 	public function index() {
 		if ($this->session->userdata('user_name') !== NULL) {
-			$data = $this->session->userdata();
-			$this->load->view('homepage',$data);
+			redirect('/Homepage_controller/index', 'refresh');
 		}else{
 			$this->loadViewWithMessage('login_form',"Please log in");
 		}
@@ -152,10 +154,10 @@ class User_Authentication extends CI_Controller {
 
 			$user = $this->login_database->sanitizeUserDataAndHashPassword($user);
 			if ($this->login_database->signup($user)) {
+				//check if user registered
 				$userId = $this->login_database->getUserId($user['user_name']);
 				if ($userId === false) {
 					$this->loadViewWithMessage('signup_form','New user registration failed, contact admin at urbandictionarytracker@gmail.com<br>');
-
 				}else{
 					$user['id'] = $userId;
 					$this->loadViewWithMessage('login_form','User has been registered successfully and is pending validation');

@@ -1,0 +1,13 @@
+{
+	"folders":
+	[
+		{
+			"path": "/Applications/MAMP/htdocs"
+		}
+	],
+    "settings": {
+        "xdebug": {
+             "url": "http://localhost:8080/Site_1/",
+        }
+    }
+}
